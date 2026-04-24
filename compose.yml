@@ -4,6 +4,8 @@
 # - Caddy does NOT bind 0.0.0.0:80 (Coolify/Traefik already use host 80/443)
 # - Caddy only exposes port 80 on the project network; assign Coolify’s domain
 #   to the *caddy* service, port 80 (container)
+# - Caddy / lila / picfit are built with small Dockerfiles that COPY conf/* into the
+#   image (avoids file bind mounts when the host path is wrong/missing; common on Coolify)
 #
 # In Coolify → Environment, set (example):
 #   LILA_URL=https://lichess.example.com
@@ -15,24 +17,27 @@ name: lichess
 
 services:
   caddy:
-    image: caddy:2
+    build:
+      context: .
+      dockerfile: caddy.Dockerfile
+    image: lila-coolify-caddy:local
     # Required on Coolify: do not use "ports: - 80:80" here
     expose:
       - "80"
     environment:
       - LILA_DOMAIN=${LILA_DOMAIN:-localhost}
       - LILA_URL=${LILA_URL:-http://localhost}
-    volumes:
-      - ./conf/Caddyfile:/etc/caddy/Caddyfile
     restart: unless-stopped
 
   lila:
-    image: ghcr.io/lichess-org/lila-server:latest
+    build:
+      context: .
+      dockerfile: lila.Dockerfile
+    image: lila-coolify-lila:local
     environment:
       - LILA_DOMAIN=${LILA_DOMAIN:-localhost}
       - LILA_URL=${LILA_URL:-http://localhost}
     volumes:
-      - ./conf/lila.conf:/lila/conf/application.conf
       - lila-assets-data:/lila/public
     restart: unless-stopped
 
@@ -91,11 +96,12 @@ services:
     restart: "no"
 
   picfit:
-    image: thoas/picfit:0.16.1
+    build:
+      context: .
+      dockerfile: picfit.Dockerfile
+    image: lila-coolify-picfit:local
     environment:
       - PICFIT_CONFIG_PATH=/mnt/config.json
-    volumes:
-      - ./conf/picfit.json:/mnt/config.json
     restart: unless-stopped
 
   mailpit:
