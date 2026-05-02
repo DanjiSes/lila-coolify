@@ -57,10 +57,14 @@ services:
 
   mongodb:
     image: mongo:8.2-noble
+    volumes:
+      - mongodb-data:/data/db
     restart: unless-stopped
 
   redis:
     image: redis:8
+    volumes:
+      - redis-data:/data
     restart: unless-stopped
 
   lila_fishnet:
@@ -92,7 +96,10 @@ services:
 
   lila_db_seed:
     image: ghcr.io/lichess-org/lila-db-seed:latest
-    # One-off seed: do not set restart: unless-stopped
+    # One-off seed: gated behind the "seed" profile so it does NOT run on every
+    # redeploy (would otherwise re-seed/reset the DB). Run manually when needed:
+    #   docker compose --profile seed run --rm lila_db_seed
+    profiles: ["seed"]
     restart: "no"
 
   picfit:
@@ -112,6 +119,8 @@ services:
 
 volumes:
   lila-assets-data: null
+  mongodb-data: null
+  redis-data: null
 
 networks:
   default:
